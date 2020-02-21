@@ -3,8 +3,17 @@
 #import sys
 
 
+#dictionary for storing user data
 
+#register function for registering users
 
+#setup function for constructing the dht
+
+#dht complete function to check if dht requirements are satisfied
+
+#query function for retriving information from dht 
+
+#Class nodes for client objects
 
 
 if __name__ == '__main__' :
@@ -20,7 +29,9 @@ if __name__ == '__main__' :
 
     #Bind the local address and port
 
-    #listen and accept 
+    #listen and accept
+
+    
 
     
     

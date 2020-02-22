@@ -7,12 +7,38 @@ import ipaddress
 
 
 #dictionary for storing registered nodes and their status
+reg_nodes = {}
 
 #dictionary for storing nodes in dht
+dht_node = {}
+
+#list for unavailable ports
+used_ports = []
 
 
 #register function for registering users
 def register(Data):
+    keys = reg_nodes.keys()
+    username = Data[0]
+    ip = Data[1]
+    port = Data[2]
+    status = "Free"
+    
+    #check if port and username is unique
+    if(username in keys):
+        return "FAILURE: username is not unique"
+    elif(port in used_ports):
+        return "FAILURE: port is not unique"
+        
+    #create node object with data
+    nodeObj = node(username,ip,port,status)
+    
+    #add node to registered nodes dictionary
+    reg_nodes[username] = nodeObj
+    
+    #add port to used ports
+    used_ports.append(port)
+    
     return "SUCCESS"
 
 #setup function for constructing the dht
@@ -24,7 +50,7 @@ def dhtComplete(Data):
     return "SUCCESS"
 
 #query function for retriving information from dht
-def query():
+def query(Data):
     return "SUCCESS"
 
 #controller function for processing client commands
@@ -55,10 +81,11 @@ def controller(data):
 
 #Class nodes for client node objects
 class node:
-    def __init__(self, username, ip_address, port):
+    def __init__(self, username, ip_address, port, status):
         self.username = username
         self.ip_address = ip_address
         self.port = port
+        self.status = status
         #create local hash table for storing information
 
     #function returns the node username
@@ -72,6 +99,14 @@ class node:
     #function returns the node port
     def getPort(self):
         return self.port
+
+    #function return the status of the node
+    def getStatus(self):
+        return self.status
+    
+    #function changes the status of the node
+    def setStatus(self, newStatus):
+        self.status = newStatus
 
     #create hash function
     #define function for inserting into hash table

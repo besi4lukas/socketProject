@@ -27,6 +27,8 @@ def main(argv):
         sock.connect((server,port))
         while True:
             message = input(">> command: ")
+            if message == 'exit':
+                break
             sock.sendall(str.encode(message))
             data = sock.recv(1024)
             print(repr(data))
@@ -34,11 +36,3 @@ def main(argv):
   
 if __name__ == '__main__' :
     main(sys.argv)
-
-
-    
-
-    
-
-    
-    

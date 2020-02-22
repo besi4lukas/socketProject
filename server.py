@@ -12,29 +12,45 @@ import ipaddress
 
 
 #register function for registering users
-def register():
-    
+def register(Data):
     return "SUCCESS"
 
 #setup function for constructing the dht
-def setUp():
-    
+def setUp(Data):
     return "SUCCESS"
 
 #dht complete function to check if dht requirements are satisfied
-def dhtComplete():
-    
+def dhtComplete(Data):
     return "SUCCESS"
 
 #query function for retriving information from dht
 def query():
-    
     return "SUCCESS"
 
 #controller function for processing client commands
 def controller(data):
+    DataArr = data.split(" ")
+    command = DataArr.pop(0)
     
-    return "SUCCESS"
+    if command == 'register':
+        #calls the register function
+        return register(DataArr)
+
+    elif command == 'setup-dht':
+        #calls the setUp function
+        return setUp(DataArr)
+        
+    elif command == 'dht-complete':
+        #calls the dhtComplete function
+        return dhtComplete(DataArr)
+        
+    elif command == 'query-dht':
+        #calls the query function
+        return query(DataArr)
+    
+    else:
+        return "Command is not valid"
+
 
 
 #Class nodes for client objects
@@ -67,25 +83,19 @@ def main(argv):
 
     #create socket for sending and recieving datagrams
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        #Bind the local address and port
         sock.bind((host,port))
+        #listen and accept
         sock.listen()
         conn, addr = sock.accept()
         with conn:
             print("Connected by", addr)
             while True:
                 data = conn.recv(1024)
-                print(data)
-                #message = controller(data)
+                message = controller(data.decode())
                 if not data:
                     break
-                conn.sendall(str.encode("Received Information"))
-                
-        
-
-
-    #Bind the local address and port
-
-    #listen and accept
+                conn.sendall(str.encode(message))
 
 if __name__ == '__main__' :
     main(sys.argv)

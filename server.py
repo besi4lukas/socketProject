@@ -53,13 +53,25 @@ def controller(data):
 
 
 
-#Class nodes for client objects
+#Class nodes for client node objects
 class node:
     def __init__(self, username, ip_address, port):
         self.username = username
         self.ip_address = ip_address
         self.port = port
         #create local hash table for storing information
+
+    #function returns the node username
+    def getUsername(self):
+        return self.username
+    
+    #function returns the node ipaddress
+    def getIpAddress(self):
+        return self.ip_address
+    
+    #function returns the node port
+    def getPort(self):
+        return self.port
 
     #create hash function
     #define function for inserting into hash table

@@ -1,4 +1,6 @@
 #This file contains server source code
+#Authors: Kingsley Besidonne and Molife Chaplain
+#Group number: 33
 import socket
 import sys
 import ipaddress
@@ -53,27 +55,30 @@ def main(argv):
     #check if our commandline input parameters are of correct length
     if(len(sys.argv) != 2):
         print("Error: parameter length not correct")
+        return 0
 
     #listening port of server
-    port = sys.argv[1]
+    port = int(sys.argv[1])
 
     #local address for server
-    hostAddr = str(ipaddress.IPv4Address('127.0.0.1'))
+    #hostAddr = str(ipaddress.IPv4Address('127.0.0.1'))
+    host = '127.0.0.1'
     
 
     #create socket for sending and recieving datagrams
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.bind((hostAddr,port))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind((host,port))
         sock.listen()
         conn, addr = sock.accept()
         with conn:
             print("Connected by", addr)
             while True:
                 data = conn.recv(1024)
+                print(data)
                 #message = controller(data)
                 if not data:
                     break
-                conn.sendall("Received Information")
+                conn.sendall(str.encode("Received Information"))
                 
         
 

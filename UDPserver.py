@@ -5,6 +5,7 @@ from socket import *
 import sys
 import ipaddress
 import random
+import json
 
 
 #dictionary for storing registered node objects
@@ -42,7 +43,7 @@ def register(Data):
     #add port to used ports
     used_ports.append(port)
     
-    return "SUCCESS"
+    return {'code': "SUCCESS"}
 
 #setup function for constructing the dht
 def setUp(Data):
@@ -54,11 +55,11 @@ def setUp(Data):
     if (username not in keys):
         return "FAILURE: not a registered user"
     #check if n is atleast 2
-    elif (not (ring >= 2)):
+    elif (not (int(ring) >= 2)):
         return "FAILURE: ring size is too small"    
     
     #check if there are atleast n users registered
-    elif (not (len(keys) >= ring)):
+    elif (not (len(keys) >= int(ring))):
         return "FAILURE: users are too small"
     
     #check if there is exits a dht
@@ -79,8 +80,12 @@ def setUp(Data):
             tempObj.setStatus('InDHT')
             dht_node.append(tempObj)
             keys.pop(i)
+        tempList = []
+        for obj in dht_node:
+            nTuple = (obj.getUsername, obj.getIpAddress, obj.getPort)
+            tempList.append(nTuple)
 
-    return "SUCCESS"
+    return {'code': "SUCCESS", 'nodes':tempList}
 
 
     
@@ -97,7 +102,8 @@ def dhtComplete(Data):
             return "FAILURE"
         
     dht_completed = True
-    return "SUCCESS"
+    
+    return {'code': "SUCCESS"}
 
 
 #query function for retriving information from dht
@@ -113,13 +119,13 @@ def query(Data):
                 query_node = dht_node[index]
                 node_tuple = (query_node.getUsername,query_node.getIpAddress,query_node.getPort)
             else:
-                return "FAILURE: node is not free"
+                return  {'code': "FAILURE", 'error': "node is not free"}
         else:
-            return "FAILURE: user is not registered"
+            return {'code': "FAILURE", 'error': "user is not registered"}
     else:
-        return "FAILURE: dht is not complete"
-    
-    return "SUCCESS"
+        return {'code': "FAILURE", 'error': "node is not free"}
+
+    return {'code': "SUCCESS"}
 
 
 #controller function for processing client commands
@@ -197,7 +203,7 @@ def main(argv):
     serverSocket.bind((host,port))
     while True:
         data, clientAddr = serverSocket.recvfrom(2048)
-        message = controller(data.decode())
+        message = json.dumps(controller(data.decode()))
         if not data:
             break
         serverSocket.sendto(str.encode(message), clientAddr)

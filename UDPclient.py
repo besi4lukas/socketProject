@@ -4,6 +4,7 @@
 from socket import *
 import sys
 import csv
+import json
 
 #port number range [17500,17999]
 
@@ -21,7 +22,7 @@ def set_id(data):
     clientStruct['leftNode'] = Data[5]
     clientStruct['rightNode'] = Data[6]
 
-    return "SUCCESS"
+    return {'code': "SUCCESS"}
 
 #function to construct local dht of nodes
 def construct_local_dht(data):
@@ -42,7 +43,7 @@ def construct_local_dht(data):
                 local_hash_table[pos] = record
 
     
-    return "SUCCESS: dht-complete to finish setup"
+    return {'code': "SUCCESS"}
 
 #hash function for dht
 def hash_function(value, n):
@@ -75,16 +76,6 @@ def controller(data):
     
     else:
         return "Command is not valid"
-
-def open_port(ip,port):
-    serverSocket = socket(AF_INET, SOCK_DGRAM)
-    #Bind the local address and port
-    serverSocket.bind((ip,port))
-    data, clientAddr = serverSocket.recvfrom(2048)
-    message = controller(data.decode())
-    if not data:
-        break
-    serverSocket.sendto(str.encode(message), clientAddr)
         
 
 #main function for our code
@@ -105,25 +96,16 @@ def main(argv):
     #create socket for sending and recieving datagrams to server
     clientSocket = socket(AF_INET, SOCK_DGRAM)
     while True:
-        message = input(">> Input lowercase command(type 'exit' to terminate): ")
+        message = input(">> command(type 'exit' to terminate): ")
         command = controller(message)
         if message == 'exit':
             break
-
         if command == 'server':
             clientSocket.sendto(str.encode(message),(server,port))
             data, serverAddr = clientSocket.recvfrom(2048)
             print(data.decode())
             
-        elif command == 'setup-dht':
-            clientSocket.sendto(str.encode(message),(server,port))
-            data, serverAddr = clientSocket.recvfrom(2048)
-            if(data.decode() == 'SUCCESS'):
-                #call open port function
-                #open_port(port)
             
-        
-
   
 if __name__ == '__main__' :
     main(sys.argv)

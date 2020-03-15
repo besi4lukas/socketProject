@@ -5,6 +5,8 @@ from socket import *
 import sys
 import csv
 import json
+from clientbase import dht
+dht = dht()
 
 #port number range [17500,17999]
 
@@ -12,16 +14,18 @@ clientStruct = {}
 local_hash_table = {}
 
 #function to set user id
-def set_id(data):
-    #receive data
-    clientStruct['username'] = Data[0]
-    clientStruct['ip'] = Data[1]
-    clientStruct['port'] = Data[2]
-    clientStruct['id'] = Data[3]
-    clientStruct['ring'] = Data[4]
-    clientStruct['leftNode'] = Data[5]
-    clientStruct['rightNode'] = Data[6]
+def set_id(nodes):
+    #create socket for communicating with clients
+    p2pSocket = socket(AF_INET, SOCK_DGRAM)
 
+    for i in range(len(nodes)):
+        id = i + 1
+        n = int(nodes[i]["ring"])
+        left = (i - 1) % n 
+        right = (i + 1) % n 
+        message = {"id":id, "ring":n, "left_node":nodes[left], "right_node":nodes[right]}
+        p2pSocket.sendto(str.encode(message),(nodes[i]["ip"],nodes[i]["port"]))
+        
     return {'code': "SUCCESS"}
 
 #function to construct local dht of nodes
@@ -56,11 +60,11 @@ def controller(data):
     DataArr = data.split(" ")
     command = DataArr.pop(0)
     
-    if command == 'register':
-        return 'server'
+    if command == "register":
+        return {"node":"server", "command":command}
 
-    elif command == 'setup-dht':
-        return 'server'
+    elif command == "setup-dht":
+        return {"node":"server", "command":command}
         
     elif command == 'dht-complete':
         return 'server'
@@ -76,7 +80,7 @@ def controller(data):
     
     else:
         return "Command is not valid"
-        
+
 
 #main function for our code
 def main(argv):
@@ -100,10 +104,16 @@ def main(argv):
         command = controller(message)
         if message == 'exit':
             break
-        if command == 'server':
+        if command["node"] == 'server':
             clientSocket.sendto(str.encode(message),(server,port))
             data, serverAddr = clientSocket.recvfrom(2048)
-            print(data.decode())
+            output = json.loads(data.decode())
+            if(command["command"] == "register"):
+                print(output["code"])
+            elif(command["command"] == "setup-dht"):
+                if(output["code"] == "SUCCESS"):
+                    return set_id(output["node"])
+
             
             
   

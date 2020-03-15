@@ -6,50 +6,49 @@ import sys
 import ipaddress
 import random
 import json
-
-
-#dictionary for storing registered node objects
-reg_nodes = {}
-
-#list for storing nodes in dht
-dht_node = []
-
-#list for unavailable ports
-used_ports = []
-
-dht_completed = False
+from base import dht
+dht = dht()
 
 
 #register function for registering users
 def register(Data):
-    keys = reg_nodes.keys()
+    #Check if the data from user is empty
+    if(not(Data)):
+        return {"code":"Incomplete command"}
+
+    keys = dht.get_reg_nodes().keys()
     username = Data[0]
     ip = Data[1]
     port = Data[2]
-    status = "Free"
+    state = "Free"
     
     #check if port and username is unique
     if(username in keys):
-        return "FAILURE: username is not unique"
-    elif(port in used_ports):
-        return "FAILURE: port is not unique"
+        return {"code":"FAILURE: username is not unique"}
+    elif(len(username) > 15):
+        return {"code":"FAILURE: username is too long"}
+    elif(port in dht.get_used_ports()):
+        return {"code":"FAILURE: port is not unique"}
         
     #create node object with data
-    nodeObj = node(username,ip,port,status)
+    nodeObj = node(username,ip,port,state)
     
     #add node to registered nodes dictionary
-    reg_nodes[username] = nodeObj
+    dht.add_reg_nodes(username,nodeObj)
+    # reg_nodes[username] = nodeObj
     
     #add port to used ports
-    used_ports.append(port)
+    dht.add_used_ports(port)
+    #used_ports.append(port)
     
-    return {'code': "SUCCESS"}
+    return {"code":"SUCCESS", "node":"empty"}
 
 #setup function for constructing the dht
 def setUp(Data):
+    
     ring = Data[0]
     username = Data[1]
-    keys = reg_nodes.keys()
+    keys = dht.get_reg_nodes().keys()
     
     #check if user is registered
     if (username not in keys):
@@ -63,29 +62,42 @@ def setUp(Data):
         return "FAILURE: users are too small"
     
     #check if there is exits a dht
-    elif (dht_node):
+    elif (dht.get_dht_node()):
         return "FAILURE: dht already exists"
 
     else:
         #set the state of username to leader
-        dht_node.append(reg_nodes[username])
-        dht_node[0].setStatus('Leader')
+        leaderObj = dht.get_reg_nodes()[username]
+        leaderObj.setState("Leader")
+        dht.add_dht_node(leaderObj)
+        # dht.add_reg_nodes(username,leaderObj)
 
         #select random n-1 free users and change the state of users to inDHT
-        index = random.sample(range(1,len(keys)-1),(ring - 1))
-        keys.remove(username)
-        for i in index:
-            #put users into dht_node list
-            tempObj = reg_nodes[keys[i]]
-            tempObj.setStatus('InDHT')
-            dht_node.append(tempObj)
-            keys.pop(i)
-        tempList = []
-        for obj in dht_node:
-            nTuple = (obj.getUsername, obj.getIpAddress, obj.getPort)
-            tempList.append(nTuple)
+        size = int(ring) 
+        size_dht = len(dht.get_dht_node())
 
-    return {'code': "SUCCESS", 'nodes':tempList}
+        if(not(keys)):
+            return {"code":"error: no registered nodes"}
+        
+        for key in keys:
+            tempObj = dht.get_reg_nodes()[key]
+            if (tempObj.getState() == "Free"):
+                tempObj.setState("InDHT")
+                dht.add_dht_node(tempObj)
+                # dht.add_reg_nodes(tempObj.getUsername(),tempObj)
+                size_dht += 1
+                if size_dht == size:
+                    break
+            else:
+               dht.add_reg_nodes(tempObj.getUsername(),tempObj) 
+
+        #get the nodes in the DHT and place in a 3-tuple
+        node_table = []
+        for obj in dht.get_dht_node():
+            nTuple = {"username":obj.getUsername(), "ip":obj.getIpAddress(),"port":obj.getPort(),"state":obj.getState(),"ring":ring}
+            node_table.append(nTuple)
+
+    return {"code": "SUCCESS", "node":node_table}
 
 
     
@@ -108,6 +120,7 @@ def dhtComplete(Data):
 
 #query function for retriving information from dht
 def query(Data):
+    
     #check if user is registered
     if(dht_completed):
         username = Data[0]
@@ -148,17 +161,36 @@ def controller(data):
     elif command == 'query-dht':
         #calls the query function
         return query(DataArr)
-     
+    
+##    elif command == 'leave-dht':
+##        #calls the query function
+##        return query(DataArr)
+    
+##    elif command == 'dht-rebuilt':
+##        #calls the query function
+##        return query(DataArr)
+    
+    elif command == 'deregister':
+        #calls the query function
+        return query(DataArr)
+    
+##    elif command == 'teardown-dht':
+##        #calls the query function
+##        return query(DataArr)
+    
+##    elif command == 'teardown-complete':
+##        #calls the query function
+##        return query(DataArr)
     else:
-        return "Command is not valid"
+        return {"code":"Command is not valid"}
 
 #Class nodes for client node objects
 class node:
-    def __init__(self, username, ip_address, port, status):
+    def __init__(self, username, ip_address, port, state):
         self.username = username #username of node
         self.ip_address = ip_address #ipaddress of node
         self.port = port #port of the node
-        self.status = status #status of node
+        self.state = state #status of node
  
 
     #function returns the node username
@@ -174,12 +206,12 @@ class node:
         return self.port
 
     #function return the status of the node
-    def getStatus(self):
-        return self.status
+    def getState(self):
+        return self.state
     
     #function changes the status of the node
-    def setStatus(self, newStatus):
-        self.status = newStatus
+    def setState(self, newState):
+        self.state = newState
 
 
 #main function for our code

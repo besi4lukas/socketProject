@@ -53,7 +53,7 @@ def setUp(Data):
     
     #check if user is registered
     if (username not in keys):
-        return "FAILURE: not a registered user"
+        return {"code":"FAILURE: not a registered user", "node":"empty"}
     #check if n is atleast 2
     elif (not (int(ring) >= 2)):
         return "FAILURE: ring size is too small"    
@@ -101,20 +101,32 @@ def setUp(Data):
     return {"code": "SUCCESS", "node":node_table}
 
 
-    
+def state(Data):
+    username = Data[0]
+    keys = dht.get_reg_nodes().keys()
+
+    #check if user is registered
+    if (username not in keys):
+        return {"code":"FAILURE: not a registered user", "node":"empty"}
+
+    else:
+        Obj = dht.get_reg_nodes()[username]
+        if (Obj.getState() == "InDHT"):
+            return {"code":"SUCCESS", "node":"empty"}
+
 
 #dht complete function to check if dht requirements are satisfied
 def dhtComplete(Data):
     #check if user is registered
     username = Data[0]
-    keys = reg_nodes.keys()
+    keys = dht.get_reg_nodes().keys()
     if (username in keys):
-        nodeobj = reg_node[username]
+        nodeobj = dht.get_reg_nodes()[username]
         #check if the user is a leader
         if (nodeobj.getStatus() != 'Leader'):
             return "FAILURE"
         
-    dht_completed = True
+    # dht_completed = True
     
     return {'code': "SUCCESS"}
 
@@ -162,6 +174,9 @@ def controller(data):
     elif command == 'query-dht':
         #calls the query function
         return query(DataArr)
+
+    elif command == 'listen':
+        return state(DataArr)
     
 ##    elif command == 'leave-dht':
 ##        #calls the query function

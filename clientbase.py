@@ -16,7 +16,7 @@ class dht:
 
     def get_right_node(self):
         return self.right_node
-        
+
     def get_ip(self):
         return self.ip
 
@@ -26,11 +26,17 @@ class dht:
     def get_left_node(self):
         return self.left_node
 
+    def set_id(self,id):
+        self.id = id
+
     def set_ip(self,ip):
         self.ip = ip
 
     def set_port(self,port):
         self.port = port
+
+    def set_ring_size(self,ring):
+        self.ring_size = ring
 
     def set_right_node(self,node):
         self.right_node = node

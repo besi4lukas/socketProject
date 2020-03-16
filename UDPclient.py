@@ -81,18 +81,13 @@ def controller(data):
     
     elif command == 'construct':
         return construct_local_dht(DataArr)
+
+    elif command == 'listen':
+        return {"node":"server", "command":command}
     
     else:
         return "Command is not valid"
 
-
-def leader(nodes):
-    Leader = False
-    for node in nodes:
-        if node["state"] == "Leader":
-            if node["ip"] == dht.get_ip() and node["port"] == dht.get_port():
-                Leader = True
-                return Leader
 
 def listen():
     #create socket for sending and recieving datagrams
@@ -101,7 +96,7 @@ def listen():
     server = dht.get_ip()
     port = int(dht.get_port())
     p2pSocket.bind((server,port))
-
+    print("listening...")
     while True:
         data, clientAddr = p2pSocket.recvfrom(2048)
         message = json.dumps(controller(data.decode()))
@@ -123,7 +118,10 @@ def main(argv):
     port = int(sys.argv[2])
         
     #create socket for sending and recieving datagrams to server
-    clientSocket = socket(AF_INET, SOCK_DGRAM)
+    clientSocket = socket(AF_INET, SOCK_DGRAM) 
+
+    exit_ = True
+
     while True:
         message = input(">> command(type 'exit' to terminate): ")
         command = controller(message)
@@ -141,14 +139,20 @@ def main(argv):
                 dht.set_ip(output["node"]["ip"])
                 dht.set_port(output["node"]["port"])
                 print(output["code"])
-
+                
             elif(command["command"] == "setup-dht"):
                 if(output["code"] == "SUCCESS"):
-                    if(leader(output["node"])):
-                        #print(set_id(output["node"]))
-                        print("setup")
-                    else:
-                        listen()
+                    print("setup")
+                else:
+                    print(output["code"])
+
+            elif(command["command"] == "listen"):
+                if(output["code"] == "SUCCESS"):
+                    exit_ = False
+                    break
+
+    if (not(exit_)):
+        listen()
   
 if __name__ == '__main__' :
     main(sys.argv)

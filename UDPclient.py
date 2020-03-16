@@ -4,6 +4,7 @@
 from socket import *
 import sys
 import csv
+import threading
 import json
 from clientbase import dht
 dht = dht()
@@ -13,8 +14,8 @@ dht = dht()
 clientStruct = {}
 local_hash_table = {}
 
-#function to set user id
-def set_id(nodes):
+#function to set user id, leader sends to dht nodes
+def set_id_nodes(nodes):
     #create socket for communicating with clients
     p2pSocket = socket(AF_INET, SOCK_DGRAM)
 
@@ -27,6 +28,9 @@ def set_id(nodes):
         p2pSocket.sendto(str.encode(message),(nodes[i]["ip"],nodes[i]["port"]))
         
     return {'code': "SUCCESS"}
+
+def set_id(node):
+    return True
 
 #function to construct local dht of nodes
 def construct_local_dht(data):
@@ -72,7 +76,7 @@ def controller(data):
     elif command == 'query-dht':
         return 'server'
     
-    elif command == 'set-id':
+    elif command == "set-id":
         return set_id(DataArr)
     
     elif command == 'construct':
@@ -82,10 +86,31 @@ def controller(data):
         return "Command is not valid"
 
 
+def leader(nodes):
+    Leader = False
+    for node in nodes:
+        if node["state"] == "Leader":
+            if node["ip"] == dht.get_ip() and node["port"] == dht.get_port():
+                Leader = True
+                return Leader
+
+def listen():
+    #create socket for sending and recieving datagrams
+    p2pSocket = socket(AF_INET, SOCK_DGRAM)
+    #Bind the local address and port
+    server = dht.get_ip()
+    port = int(dht.get_port())
+    p2pSocket.bind((server,port))
+
+    while True:
+        data, clientAddr = p2pSocket.recvfrom(2048)
+        message = json.dumps(controller(data.decode()))
+        if not data:
+            break
+        p2pSocket.sendto(str.encode(message), clientAddr)
+
 #main function for our code
 def main(argv):
-    #input from command line
-
     #check if our input parameters are of correct length
     if(len(sys.argv) < 3):
         print("Error: parameter length not correct")
@@ -102,20 +127,28 @@ def main(argv):
     while True:
         message = input(">> command(type 'exit' to terminate): ")
         command = controller(message)
+
         if message == 'exit':
             break
+
         if command["node"] == 'server':
+
             clientSocket.sendto(str.encode(message),(server,port))
             data, serverAddr = clientSocket.recvfrom(2048)
             output = json.loads(data.decode())
+
             if(command["command"] == "register"):
+                dht.set_ip(output["node"]["ip"])
+                dht.set_port(output["node"]["port"])
                 print(output["code"])
+
             elif(command["command"] == "setup-dht"):
                 if(output["code"] == "SUCCESS"):
-                    return set_id(output["node"])
-
-            
-            
+                    if(leader(output["node"])):
+                        #print(set_id(output["node"]))
+                        print("setup")
+                    else:
+                        listen()
   
 if __name__ == '__main__' :
     main(sys.argv)

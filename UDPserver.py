@@ -24,11 +24,11 @@ def register(Data):
     
     #check if port and username is unique
     if(username in keys):
-        return {"code":"FAILURE: username is not unique"}
+        return {"code":"FAILURE: username is not unique", "node":"empty"}
     elif(len(username) > 15):
-        return {"code":"FAILURE: username is too long"}
+        return {"code":"FAILURE: username is too long", "node":"empty"}
     elif(port in dht.get_used_ports()):
-        return {"code":"FAILURE: port is not unique"}
+        return {"code":"FAILURE: port is not unique", "node":"empty"}
         
     #create node object with data
     nodeObj = node(username,ip,port,state)
@@ -40,8 +40,9 @@ def register(Data):
     #add port to used ports
     dht.add_used_ports(port)
     #used_ports.append(port)
+    node_table = {"ip":ip, "port":port}
     
-    return {"code":"SUCCESS", "node":"empty"}
+    return {"code":"SUCCESS", "node":node_table}
 
 #setup function for constructing the dht
 def setUp(Data):

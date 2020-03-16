@@ -15,7 +15,8 @@ clientStruct = {}
 local_hash_table = {}
 
 #function to set user id, leader sends to dht nodes
-def set_id_nodes(nodes):
+def set_id_nodes():
+    nodes = dht.get_nodes()[0]
     #create socket for communicating with clients
     p2pSocket = socket(AF_INET, SOCK_DGRAM)
 
@@ -24,33 +25,53 @@ def set_id_nodes(nodes):
         n = int(nodes[i]["ring"])
         left = (i - 1) % n 
         right = (i + 1) % n 
-        message = {"id":id, "ring":n, "left_node":nodes[left], "right_node":nodes[right]}
+        message = json.dumps({"command":"set-id","id":id, "ring":n, "left_node":nodes[left], "right_node":nodes[right]})
         p2pSocket.sendto(str.encode(message),(nodes[i]["ip"],nodes[i]["port"]))
-        
-    return {'code': "SUCCESS"}
+        data, serverAddr = p2pSocket.recvfrom(2048)
+        output = json.loads(data.decode())
 
-def set_id(node):
-    return True
+        if(output["code"] != "SUCCESS"):
+            return {"code":"FAILURE: error while building dht"}
+        
+    return {"code": "SUCCESS"}
+
+def set_id():
+    code = set_id_nodes()
+    if(code["code"] == "SUCCESS"):
+        data = "StatsCountry.csv"
+        construct_local_dht(data)
+    else:
+        return {"code":"FAILURE: error while building dht"}
+    return {"code": "SUCCESS"}
 
 #function to construct local dht of nodes
 def construct_local_dht(data):
+    p2pSocket = socket(AF_INET, SOCK_DGRAM)
     #read in the file
-    with open(data[0], newline='') as f:
+    with open(data, newline='') as f:
         reader = csv.reader(f)
         next(f)
         for row in reader:
             record = row
             value = row[3]
             #call the hash function and set value to id_node and pos
-            num = hash_function(ord(value),clientStruct['ring'])
+            num = hash_function(ord(value),dht.get_ring_size())
             #use id_node to selct node from dht node
             id_node = num[1]
             pos = num[0]
-            if (id_node == clientStruct['id']):
+            if (id_node == dht.get_id()):
                 #store record in local hash table
-                local_hash_table[pos] = record
+                dht.add_record(pos,record)
+            else:
+                message = json.dumps({"command":"store", "id":id_node, "pos":pos, "record":record})
+                p2pSocket.sendto(str.encode(message),(dht.get_right_node()["ip"],dht.get_right_node()["port"]))
+                data, serverAddr = p2pSocket.recvfrom(2048)
+                output = json.loads(data.decode())
+                
+                if(output["code"] != "SUCCESS"):
+                    return {"code":"FAILURE: error while adding records to local hash tables"}
 
-    
+                
     return {'code': "SUCCESS"}
 
 #hash function for dht
@@ -77,10 +98,7 @@ def controller(data):
         return 'server'
     
     elif command == "set-id":
-        return set_id(DataArr)
-    
-    elif command == 'construct':
-        return construct_local_dht(DataArr)
+        return {"node":"client", "command":command}
 
     elif command == 'listen':
         return {"node":"server", "command":command}
@@ -88,6 +106,35 @@ def controller(data):
     else:
         return "Command is not valid"
 
+def p2pController(data):
+    if (data["command"] == 'store'):
+        return store(data)
+
+    elif (data["command"] == 'set-id'):
+        return set_user_dht(data)
+
+def store(data):
+    if dht.get_id() == data["id"]:
+        dht.add_record(data["pos"],data["record"])
+    else:
+        p2pSocket = socket(AF_INET, SOCK_DGRAM)
+        message = json.dumps(data)
+        p2pSocket.sendto(str.encode(message),(dht.get_right_node()["ip"],dht.get_right_node()["port"]))
+        data, serverAddr = p2pSocket.recvfrom(2048)
+        output = json.loads(data.decode())
+
+        if(output["code"] != "SUCCESS"):
+            return {"code":"FAILURE: error while building dht"}
+
+    return {"code":"SUCCESS"}
+
+def set_user_dht(data):
+    dht.set_id(data["id"])
+    dht.set_ring_size(data["ring"])
+    dht.set_right_node(data["right_node"])
+    dht.set_left_node(data["left_node"])
+
+    return {"code":"SUCCESS"}
 
 def listen():
     #create socket for sending and recieving datagrams
@@ -96,12 +143,10 @@ def listen():
     server = dht.get_ip()
     port = int(dht.get_port())
     p2pSocket.bind((server,port))
-    print("listening...")
     while True:
+        print("listening...")
         data, clientAddr = p2pSocket.recvfrom(2048)
-        message = json.dumps(controller(data.decode()))
-        if not data:
-            break
+        message = json.dumps(p2pController(data.decode()))
         p2pSocket.sendto(str.encode(message), clientAddr)
 
 #main function for our code
@@ -142,6 +187,7 @@ def main(argv):
                 
             elif(command["command"] == "setup-dht"):
                 if(output["code"] == "SUCCESS"):
+                    dht.set_node_table(output["node"])
                     print("setup")
                 else:
                     print(output["code"])
@@ -150,6 +196,13 @@ def main(argv):
                 if(output["code"] == "SUCCESS"):
                     exit_ = False
                     break
+
+        elif command["node"] == 'client':
+
+            if(command["command"] == "set-id"):
+                code = set_id()
+                print(code["code"]+" Issue command dht-complete")
+
 
     if (not(exit_)):
         listen()

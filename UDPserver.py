@@ -121,38 +121,181 @@ def dhtComplete(Data):
     username = Data[0]
     keys = dht.get_reg_nodes().keys()
     if (username in keys):
-        nodeobj = dht.get_reg_nodes()[username]
-        #check if the user is a leader
-        if (nodeobj.getStatus() != 'Leader'):
-            return "FAILURE"
-        
-    # dht_completed = True
+        if (dht.get_dht_node()):
+            nodeobj = dht.get_dht_node()[0]
+            #check if the user is a leader
+            if (nodeobj.getState() != 'Leader'):
+                return {"code":"FAILURE"}
+            else:
+                dht.set_dht_complete(True)
     
-    return {'code': "SUCCESS"}
+    return {"code": "SUCCESS"}
 
 
 #query function for retriving information from dht
 def query(Data):
-    
     #check if user is registered
-    if(dht_completed):
+    if(dht.get_dht_completed()):
         username = Data[0]
-        keys = reg_nodes.keys()
+        keys = dht.get_reg_nodes().keys()
         if (username in keys):
-            nodeobj = reg_node[username]
-            if(nodeobj.getStatus() == 'Free'):
-                index = random.randint(1,len(dht_node))
-                query_node = dht_node[index]
-                node_tuple = (query_node.getUsername,query_node.getIpAddress,query_node.getPort)
+            nodeobj = dht.get_reg_nodes()[username]
+            if(nodeobj.getState() == 'Free'):
+                index = random.randint(1,len(dht.get_dht_node()))
+                query_node = dht.get_dht_node()[index]
+                node_tuple = {"username":query_node.getUsername(),"ip":query_node.getIpAddress(),"port":query_node.getPort()}
+                return {"code":"SUCCESS", "node":node_tuple}
             else:
-                return  {'code': "FAILURE", 'error': "node is not free"}
+                return  {'code': "FAILURE: node is not free"}
         else:
-            return {'code': "FAILURE", 'error': "user is not registered"}
+            return {'code': "FAILURE: user is not registered"}
     else:
-        return {'code': "FAILURE", 'error': "node is not free"}
+        return {'code': "FAILURE: dht is not complete"}
 
-    return {'code': "SUCCESS"}
+def deregister(Data):
+    username = Data[0]
+    keys = dht.get_reg_nodes().keys()
 
+    if (username in keys):
+        nodeobj = dht.get_reg_nodes()[username]
+        if(nodeobj.getState() == 'Free'):    
+            dht.get_reg_nodes().pop(username)
+            return {"code":"SUCCESS"}
+        else:
+            return {'code': "FAILURE: node is not free"}
+    else:
+        return {'code': "FAILURE: user is not registered"}
+
+
+#function for leaving the dht
+def leave(Data):
+    if (dht.get_dht_completed()):
+        username = Data[0]
+        keys = dht.get_reg_nodes().keys()
+        if (username in keys):
+            nodeobj = dht.get_reg_nodes()[username]
+            if (nodeobj.getState() == 'Leader'):
+                #keep record of right node of the user
+                right = nodeobj.get_right_node()
+                #intiate teardown procedure
+                nodeobj.teardown(Data)
+                #deleting local hash table after teardown propagates back to Leader
+                #nodeobj.delete(local_hash_table)
+                #renumbering and resetting leader
+                nodeobj.resetID()
+                #resetting right and left neighbours
+                nodeobj.reset_left()
+                nodeobj.reset_right()
+                #teardown complete command
+                teardown_complete(username)
+                #rebuilding the dht
+                rebuildDHT(Data)
+                dht_rebuilt(Data)
+            else:
+                return {'code':"FAILURE", 'error': "user not DHT leader."}
+    else:
+        return {'code':"FAILURE", 'error': "DHT not complete."}
+    return {'code': "SUCCESS"} 
+    leaving = username
+
+
+#teardown function
+# def teardown(Data):
+#     username = Data[0]
+#     dhtKeys = dht_node.keys()
+#     leader = reg_node[username]
+#     right = leader.get_right_node()
+#     #initiate teardown
+#     while (right != leader): 
+#         nodeinUse = right
+#         right.delete(local_hash_table)
+#         nodeinUse.delete(ID)
+#         nodeinUse.delete(nodeinUse.get_right_node())
+#         nodeinUse.delete(nodeinUse.get_left_node())
+#         right = nodeinUse.get_right_node()
+#         teardown(right)
+
+
+
+#teardown complete function
+# def teardown_complete(Data):
+#     #check if user is registered
+#     username = Data[0]
+#     keys = reg_nodes.keys()
+#     if (username in keys):
+#         nodeobj = reg_node[username]
+#         #check if the user is a leader
+#         if (nodeobj.getStatus() != 'Leader'):
+#             return {'code': "FAILURE"}
+        
+#     teardown_complete = True
+#     for i in dht_node.keys():
+#         i.setStatus('Free')
+#     dht_completed = False
+    
+#     return {'code': "SUCCESS"}
+
+
+# #function for rebuilding the dht
+# def rebuildDHT():
+#     Leader = Data[1]
+#     keys = reg_nodes.keys()
+#     if (Leader in keys):
+#         nodeobj = reg_node[username]
+#         if(dht_completed == False):
+#             setUp(Leader)
+#             dhtComplete(Leader)
+#     dht_rebuilt(Data)
+#     pass
+
+
+#dht rebuilt confirmation
+# def dht_rebuilt(Data):
+#     #check if user is registered
+#     #This needs fixing, still working on this idea
+#     newLead = Data[1]
+#     checkName = Data[0]
+#     keys = reg_nodes.keys()
+#     if (checkName != leaving):
+#         return "FAILURE"
+#     else:
+#         checkName.setState("Free")
+#         return {'code': "SUCCESS"}
+#     pass
+
+
+#function for resetting ID
+# def resetID(Data):
+#     username = Data[0]
+#     nodeobj = reg_node[username]
+#     right = nodeobj.get_right_node()
+
+#     #reduce ring size of the right node
+#     while(right != nodeobj):
+#         right.get_ring_size()
+#         right.get_id()
+#         right.id = right.set_id(int(right.get_id) - 1)
+#         right.ring_size = right.set_ring_size(int(right.get_ring_size)-1)
+#         resetID(right)  
+#     pass
+
+
+# #function for resetting left
+# def reset_left(Data):
+#     username = Data[0]
+#     nodeobj = reg_node[username]
+#     left = nodeobj.get_left_node()
+#     left.set_right_node(nodeobj.get_right_node())
+#     pass
+
+
+# #function for resetting right
+# def reset_right(Data):
+#     username = Data[0]
+#     nodeobj = reg_node[username]
+#     right = nodeobj.get_left_node()
+#     right.set_left_node(nodeobj.nodeonj.get_right_node())
+#     pass
 
 #controller function for processing client commands
 def controller(data):
@@ -188,7 +331,7 @@ def controller(data):
     
     elif command == 'deregister':
         #calls the query function
-        return query(DataArr)
+        return deregister(DataArr)
     
 ##    elif command == 'teardown-dht':
 ##        #calls the query function

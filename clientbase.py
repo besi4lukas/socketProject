@@ -7,6 +7,8 @@ class dht:
         self.ring_size = 0
         self.right_node = ""
         self.left_node = ""
+        self.node_table = []
+        self.local_hash_table = {}
     
     def get_id(self):
         return self.id
@@ -25,6 +27,18 @@ class dht:
 
     def get_left_node(self):
         return self.left_node
+
+    def get_nodes(self):
+        self.node_table
+        
+    def get_local_hash_table(self):
+        return self.local_hash_table
+    
+    def add_record(self,pos,record):
+        self.local_hash_table[pos] = record
+
+    def set_node_table(self,nodes):
+        self.node_table.append(nodes)
 
     def set_id(self,id):
         self.id = id
